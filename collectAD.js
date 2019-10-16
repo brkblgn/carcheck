@@ -61,7 +61,7 @@ const fs = require('fs');
 
     const wAds = JSON.stringify(ads);
 
-    fs.writeFile("./ilanlar.txt", wAds, (err) => {
+    fs.writeFile("./ilanlar.json", wAds, (err) => {
         if (err) {
             console.log(err);
         } else {
