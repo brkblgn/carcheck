@@ -16,7 +16,7 @@ mongoose.set('useCreateIndex', true);
 
     });
     const page = await browser.newPage();
-    await page.goto('');
+    await page.goto('https://www.sahibinden.com/citroen-bx?sorting=date_asc');
 
     const ads = [];
     const ilanSayisi = await page.evaluate(() => {
@@ -25,7 +25,7 @@ mongoose.set('useCreateIndex', true);
         sayi = sayi[0].replace(".", "");
         return sayi;
     });
-    //console.log("ilanSayisi: ", ilanSayisi);
+    console.log("ilanSayisi: ", ilanSayisi);
 
     let sayfaSayisi = 1;
     if (ilanSayisi > 20) {
@@ -34,7 +34,10 @@ mongoose.set('useCreateIndex', true);
             sayfaSayisi = sayfaSayisi.split(" ");
             return sayfaSayisi[1];
         });
-        //console.log("sayfaSayisi: ", sayfaSayisi);
+        if (sayfaSayisi > 49) {
+            sayfaSayisi = 50;
+        }
+        console.log("sayfaSayisi: ", sayfaSayisi);
 
     }
 
@@ -42,14 +45,15 @@ mongoose.set('useCreateIndex', true);
         const sayfadakiIlanSayisi = await page.evaluate(() => {
             return document.querySelectorAll(`#searchResultsTable > tbody > tr`).length;
         });
-        //console.log("sayfadakiIlanSayisi: ", sayfadakiIlanSayisi);
+        console.log("sayfadakiIlanSayisi: ", sayfadakiIlanSayisi);
 
-        for (let i = 1; i <= sayfadakiIlanSayisi; i++) {
-            if (i == 4) {
+        for (let i = 1; i < sayfadakiIlanSayisi; i++) {
+            if (i == 55) {
                 continue;
-            } else if (i == 5) {
+            } else if (i == 4) {
                 continue;
             } else {
+                await page.waitForSelector(`#searchResultsTable > tbody > tr:nth-child(${i})`);
                 const ad = await page.evaluate((i) => {
                     const ilanNo = document.querySelector(`#searchResultsTable > tbody > tr:nth-child(${i})`).attributes["data-id"].value;
                     const baslik = document.querySelector(`#searchResultsTable > tbody > tr:nth-child(${i}) > td:nth-child(3)`).innerText;
@@ -77,7 +81,7 @@ mongoose.set('useCreateIndex', true);
                     };
                     return ad;
                 }, i);
-                //console.log("ad: ", ad);
+                console.log("ad: ", ad);
 
                 ads.push(ad);
             }
@@ -93,10 +97,33 @@ mongoose.set('useCreateIndex', true);
     }
     //console.log(ads);
 
-    await ilanSchema.create(ads, (err, res) => {
-        if (err) throw err
-        console.log(res);
-    });
+    for (let i = 0; i < ads.length; i++) {
+        await ilanSchema.findOne({
+            ilanNo: ads[i].ilanNo
+        }, async (err, data) => {
+            if (err) throw err;
 
+            if (data == null) {
+                await ilanSchema.create(ads[i], (err, res) => {
+                    if (err) throw err
+                    console.log("eklendi", res);
+                });
+            } else {
+                await ilanSchema.updateOne({
+                    ilanNo: ads[i].ilanNo
+                }, ads[i], (err, numAffected) => {
+                    if (err) throw err;
+                    console.log("değişti: ", numAffected);
+                });
+            }
+        });
+    }
+
+    /*
+        await ilanSchema.create(ads, (err, res) => {
+            if (err) throw err
+            console.log(res);
+        });
+    */
     browser.close();
 })()
